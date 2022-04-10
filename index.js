@@ -4,13 +4,33 @@ import traverse from "@babel/traverse";
 import path from "path";
 import ejs from "ejs";
 import { transformFromAst } from "babel-core";
+import { loadJson } from "./loaders/jsonLoader.js";
+
+let webpackConfig = {
+  module: {
+    rules: [
+      {
+        test: /\.json$/,
+        use: loadJson,
+      },
+    ],
+  },
+};
+
 let id = 0;
 function createAsset(filePath) {
   //1.获取文件内容
-  const source = fs.readFileSync(filePath, {
+  let source = fs.readFileSync(filePath, {
     encoding: "utf-8",
   });
 
+  // initLoad
+  const loaders = webpackConfig.module.rules;
+  loaders.forEach(({ test, use }) => {
+    if (test.test(filePath)) {
+      source = use(source);
+    }
+  });
 
   //2.获取文件依赖,使用babel从ast语法树中查找
   //	 ast: 抽象语法树
@@ -27,7 +47,7 @@ function createAsset(filePath) {
   const { code } = transformFromAst(ast, null, {
     presets: ["env"],
   });
-  
+
   return {
     filePath,
     code,
